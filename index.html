@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Hệ Thống TKB - Bảo Toàn Dữ Liệu Tuyệt Đối</title>
+    <style>
+        :root { --red: #ff0000; --blue: #0000ff; --warning: #ffd700; --bg-conflict: #ffcccc; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background-color: #f4f7f6; text-align: center; }
+        
+        #login-screen {
+            display: flex; justify-content: center; align-items: center; height: 100vh;
+            background: #2c3e50; position: fixed; width: 100%; top: 0; left: 0; z-index: 1000;
+        }
+        .auth-box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 400px; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; text-align: center; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-green { background: #27ae60; color: white; }
+        
+        #main-app { display: none; padding: 20px; }
+        .admin-panel { background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        .week-filter { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
+        table { width: 100%; border-collapse: collapse; background: white; table-layout: fixed; }
+        th, td { border: 1px solid #aaa; padding: 10px; text-align: center; vertical-align: top; }
+        th { background: #34495e; color: white; font-size: 13px; }
+        .col-phong { background: #ecf0f1; font-weight: bold; width: 120px; vertical-align: middle; font-size: 15px; }
+
+        .mon-item { border-bottom: 2px dashed #eee; padding: 10px 0; display: flex; flex-direction: column; align-items: center; }
+        .ten-mon { font-weight: bold; text-transform: uppercase; color: var(--red); font-size: 14px; line-height: 1.4; }
+        .gv-name { font-style: italic; color: var(--blue); font-size: 13px; margin: 3px 0; }
+        
+        .khac-co-so { color: #856404; background: var(--warning); font-style: italic; font-weight: bold; font-size: 11px; padding: 6px; border-radius: 4px; margin-bottom: 8px; display: block; border: 1px solid #e6c200; }
+        .trung-lich { color: var(--red); font-style: italic; font-weight: bold; font-size: 13px; display: block; margin-top: 5px; text-transform: uppercase; background: #fff; padding: 2px; }
+        .bg-conflict { background-color: var(--bg-conflict) !important; }
+
+        .btn-del { background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; margin-top: 8px; }
+
+        @media print { .admin-panel, .week-filter, button, #login-screen { display: none !important; } #main-app { display: block !important; } }
+    </style>
+</head>
+<body>
+
+<div id="login-screen">
+    <div class="auth-box">
+        <h2 style="margin-bottom: 20px;">ĐĂNG NHẬP</h2>
+        <input type="text" id="u-id" placeholder="Tên tài khoản (sv... hoặc giangvien)">
+        <input type="password" id="u-pw" placeholder="Mật khẩu">
+        <button class="btn-green" onclick="doLogin()">VÀO HỆ THỐNG</button>
+        <p style="font-size: 11px; color: #7f8c8d; margin-top: 15px;">Dữ liệu cũ sẽ tự động được đồng bộ sau khi đăng nhập.</p>
+    </div>
+</div>
+
+<div id="main-app">
+    <div style="margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; display: inline-block;">
+        Người dùng: <strong id="user-tag" style="color: #27ae60;"></strong> | 
+        <button onclick="location.reload()" style="width:auto; padding:5px 15px; background: #95a5a6; color: white;">Đăng xuất</button>
+    </div>
+
+    <div class="week-filter">
+        <strong>Lịch học tuần có ngày: </strong>
+        <input type="date" id="week-picker" onchange="render()" style="width: 200px; display: inline-block;">
+    </div>
+
+    <div id="gv-form" class="admin-panel" style="display: none;">
+        <input type="text" id="f-n" placeholder="Tên môn học">
+        <select id="f-t"><option>LÍ THUYẾT</option><option>THỰC HÀNH</option></select>
+        <input type="number" id="f-tc" placeholder="Số tín chỉ">
+        <input type="text" id="f-c" placeholder="Mã HP">
+        <input type="text" id="f-gv" placeholder="Giảng viên">
+        <select id="f-cs"><option>ADV</option><option>LVS</option><option>LLQ</option></select>
+        <input type="text" id="f-r" placeholder="Phòng">
+        <select id="f-d">
+            <option value="2">Thứ 2</option><option value="3">Thứ 3</option>
+            <option value="4">Thứ 4</option><option value="5">Thứ 5</option>
+            <option value="6">Thứ 6</option><option value="7">Thứ 7</option><option value="8">CN</option>
+        </select>
+        <input type="time" id="f-t1" value="06:30">
+        <input type="time" id="f-t2" value="09:00">
+        <input type="date" id="f-d1">
+        <input type="date" id="f-d2">
+        <button class="btn-green" style="grid-column: 1/-1" onclick="addM()">THÊM MÔN HỌC</button>
+    </div>
+
+    <button class="btn-green" style="background:#3498db; width:220px; margin-bottom:20px;" onclick="window.print()">IN THỜI KHÓA BIỂU</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 120px;">Cơ sở - Phòng</th>
+                <th>Thứ 2</th><th>Thứ 3</th><th>Thứ 4</th><th>Thứ 5</th><th>Thứ 6</th><th>Thứ 7</th><th>CN</th>
+            </tr>
+        </thead>
+        <tbody id="tkb-body"></tbody>
+    </table>
+</div>
+
+<script>
+    // --- HÀM CỨU HỘ DỮ LIỆU ---
+    function getSafeData() {
+        // Danh sách các key lưu trữ từ tất cả phiên bản cũ
+        const keys = ['final_tkb_data', 'tkb_courses_db', 'edu_tkb_courses', 'tkb_data', 'savedTKB'];
+        let raw = [];
+        for (let k of keys) {
+            let d = localStorage.getItem(k);
+            if (d) { 
+                try {
+                    raw = JSON.parse(d);
+                    console.log("Đã tìm thấy dữ liệu từ khóa:", k);
+                    break; 
+                } catch(e) { console.error("Lỗi đọc dữ liệu cũ"); }
+            }
+        }
+        
+        // Chuẩn hóa dữ liệu để mất chữ "undefined"
+        return raw.map(i => ({
+            id: i.id || Date.now() + Math.random(),
+            n: (i.n || i.name || "N/A").toUpperCase(),
+            tp: i.tp || i.type || "Lí thuyết",
+            tc: i.tc || i.credits || 0,
+            cd: i.cd || i.code || "N/A",
+            gv: i.gv || "Chưa rõ",
+            cs: (i.cs || i.campus || "ADV").toUpperCase(),
+            r: (i.r || i.room || "Chưa rõ").toUpperCase(),
+            dy: i.dy || i.day || 2,
+            t1: i.t1 || "00:00",
+            t2: i.t2 || "00:00",
+            d1: i.d1 || i.startDate || "",
+            d2: i.d2 || i.endDate || ""
+        }));
+    }
+
+    let listM = getSafeData();
+    let listAcc = JSON.parse(localStorage.getItem('final_tkb_acc')) || { "giangvien": "gv123" };
+    let curU = "";
+
+    // Luôn chọn ngày hôm nay khi mở web
+    document.getElementById('week-picker').valueAsDate = new Date();
+
+    function doLogin() {
+        const u = document.getElementById('u-id').value.trim().toLowerCase();
+        const p = document.getElementById('u-pw').value;
+        if(!listAcc[u] && u.startsWith('sv')) listAcc[u] = "sv123";
+        if(listAcc[u] === p) {
+            curU = u;
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('main-app').style.display = 'block';
+            document.getElementById('user-tag').innerText = u;
+            if(u === 'giangvien') document.getElementById('gv-form').style.display = 'grid';
+            render();
+        } else alert("Sai thông tin đăng nhập!");
+    }
+
+    function addM() {
+        const m = {
+            id: Date.now(), n: document.getElementById('f-n').value.toUpperCase(), 
+            tp: document.getElementById('f-t').value, tc: document.getElementById('f-tc').value, 
+            cd: document.getElementById('f-c').value, gv: document.getElementById('f-gv').value, 
+            cs: document.getElementById('f-cs').value, r: document.getElementById('f-r').value.toUpperCase(), 
+            dy: document.getElementById('f-d').value, t1: document.getElementById('f-t1').value, 
+            t2: document.getElementById('f-t2').value, d1: document.getElementById('f-d1').value, 
+            d2: document.getElementById('f-d2').value
+        };
+        listM.push(m);
+        localStorage.setItem('final_tkb_data', JSON.stringify(listM));
+        render();
+    }
+
+    function render() {
+        const tbody = document.getElementById('tkb-body');
+        tbody.innerHTML = "";
+        
+        // Xác định khoảng thời gian của tuần đang chọn
+        const selDate = new Date(document.getElementById('week-picker').value);
+        const dayNum = selDate.getDay();
+        const diff = selDate.getDate() - (dayNum === 0 ? 6 : dayNum - 1);
+        const mon = new Date(selDate.setDate(diff)); mon.setHours(0,0,0,0);
+        const sun = new Date(mon); sun.setDate(mon.getDate() + 6); sun.setHours(23,59,59,999);
+
+        // Lọc môn thuộc tuần
+        let weekM = listM.filter(m => {
+            let s = new Date(m.d1); let e = new Date(m.d2);
+            return s <= sun && e >= mon;
+        });
+
+        let rooms = [...new Set(weekM.map(x => `${x.cs}|${x.r}`))].sort();
+
+        rooms.forEach(rk => {
+            const [cs, rm] = rk.split('|');
+            const row = document.createElement('tr');
+            row.innerHTML = `<td class="col-phong">${cs}<br>${rm}</td>`;
+
+            for(let d=2; d<=8; d++) {
+                let cellM = weekM.filter(x => x.dy == d && x.cs == cs && x.r == rm)
+                                 .sort((a,b) => a.t1.localeCompare(b.t1));
+                
+                let dayAll = weekM.filter(x => x.dy == d);
+                let html = "";
+                let hasConflictInCell = false;
+
+                // Cảnh báo khác cơ sở
+                if(new Set(dayAll.map(x => x.cs)).size > 1 && cellM.length > 0) {
+                    html += `<span class="khac-co-so">⚠ Khác cơ sở trong buổi học</span>`;
+                }
+
+                cellM.forEach(m => {
+                    // Cảnh báo trùng lịch (Kiểm tra với toàn bộ môn trong ngày đó)
+                    let isConflict = dayAll.some(other => {
+                        return m.id !== other.id && m.t1 < other.t2 && other.t1 < m.t2;
+                    });
+
+                    if(isConflict) hasConflictInCell = true;
+
+                    html += `
+                        <div class="mon-item">
+                            <span class="ten-mon">${m.n} (${m.tp})</span>
+                            <span style="font-size:11px">${m.cd} - ${m.tc} TC</span>
+                            <span style="font-weight:bold; font-size: 14px; margin-top:2px;">${m.t1} - ${m.t2}</span>
+                            <span class="gv-name">GV: ${m.gv}</span>
+                            <span style="font-size:11px; color:#666;">${m.cs}, ${m.r}</span>
+                            <span style="font-size:10px; color:#888;">${m.d1.split('-').reverse().join('/')} - ${m.d2.split('-').reverse().join('/')}</span>
+                            ${isConflict ? '<span class="trung-lich">trùng lịch</span>' : ''}
+                            ${curU==='giangvien' ? `<button class="btn-del" onclick="del(${m.id})">Xóa</button>` : ''}
+                        </div>`;
+                });
+
+                let td = document.createElement('td');
+                if(hasConflictInCell) td.className = 'bg-conflict';
+                td.innerHTML = html;
+                row.appendChild(td);
+            }
+            tbody.appendChild(row);
+        });
+    }
+
+    function del(id) {
+        if(confirm("Xác nhận xóa môn này?")) {
+            listM = listM.filter(x => x.id !== id);
+            localStorage.setItem('final_tkb_data', JSON.stringify(listM));
+            render();
+        }
+    }
+</script>
+</body>
+</html>
